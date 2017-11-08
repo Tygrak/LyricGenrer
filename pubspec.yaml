@@ -1,0 +1,4 @@
+name: nbaresults
+dependencies:
+  dartscraper:
+    path: /home/tygrak/Programming/Dart/DartScraper
