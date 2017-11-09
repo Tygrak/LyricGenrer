@@ -28,11 +28,11 @@ main (List<String> args) async{
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Album?page=1");
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Genre/Power_Metal?page=1");
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Allmusic/Album?page=1");
-  int startAt = 2;
-  int endAt = 10;
-  List<Future> futures = new List<Future>();
+  int startAt = 61;
+  int endAt = 150;
   for (var pagenum = startAt; pagenum <= endAt; pagenum++) {
     print("Starting page $pagenum.");
+    List<Future> futures = new List<Future>();
     List<String> albumLinks = new List<String>();
     //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Genre/Power_Metal?page=$pagenum");
     HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Wikipedia_articles/Album?page=$pagenum");
@@ -122,10 +122,10 @@ main (List<String> args) async{
         print("Error encountered while getting album: " + e.toString());
       }
     }
+    await Future.wait(futures);
     outputFile.writeAsStringSync(JSON.encode(words));
     outputContainFile.writeAsStringSync(JSON.encode(wordsContain));
   }
-  await Future.wait(futures);
   print("Added ${words["Total Songs"]["All"]-songsStartAmount} songs!");
   print("Operation took ${new DateTime.now().difference(startTime).inSeconds} seconds.");
   outputFile.writeAsStringSync(JSON.encode(words));
