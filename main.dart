@@ -28,8 +28,8 @@ main (List<String> args) async{
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Album?page=1");
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Genre/Power_Metal?page=1");
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Allmusic/Album?page=1");
-  int startAt = 61;
-  int endAt = 150;
+  int startAt = 238;
+  int endAt = 270;
   for (var pagenum = startAt; pagenum <= endAt; pagenum++) {
     print("Starting page $pagenum.");
     List<Future> futures = new List<Future>();
@@ -125,6 +125,8 @@ main (List<String> args) async{
     await Future.wait(futures);
     outputFile.writeAsStringSync(JSON.encode(words));
     outputContainFile.writeAsStringSync(JSON.encode(wordsContain));
+    File lastPage = new File("lastpage.txt");
+    lastPage.writeAsStringSync("$pagenum");
   }
   print("Added ${words["Total Songs"]["All"]-songsStartAmount} songs!");
   print("Operation took ${new DateTime.now().difference(startTime).inSeconds} seconds.");
@@ -153,7 +155,7 @@ String HtmlAsciiConvert(String text){
 }
 
 List<String> GetWordsFromSong(String text){
-  text = text.replaceAll(new RegExp("[\"?!,.()]"), "");
+  text = text.replaceAll(new RegExp("[\"?!,.:}{)()]"), "");
   text = text.replaceAll("\n", " ");
   text = text.toLowerCase();
   return text.split(" ");
