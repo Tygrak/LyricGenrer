@@ -28,8 +28,8 @@ main (List<String> args) async{
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Album?page=1");
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Genre/Power_Metal?page=1");
   //HtmlPage page = await GetHTML("http://lyrics.wikia.com/wiki/Category:Allmusic/Album?page=1");
-  int startAt = 238;
-  int endAt = 270;
+  int startAt = 329;
+  int endAt = 329;
   for (var pagenum = startAt; pagenum <= endAt; pagenum++) {
     print("Starting page $pagenum.");
     List<Future> futures = new List<Future>();
