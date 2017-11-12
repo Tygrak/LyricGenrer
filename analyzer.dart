@@ -87,8 +87,79 @@ main (List<String> args) async{
       }
     }
     return;
+  } else if (args[0].toLowerCase() == "similarity" || args[0].toLowerCase() == "similar"){
+    print("Cosine similarity of genres:\n");
+    if (args.length < 3){
+      print("Not enough arguments supplied to calculate similarity.");
+    }
+    String genre1 = "";
+    String genre2 = "";
+    bool firstGenre = true;
+    for (var i = 1; i < args.length; i++) {
+      if (args[i] == "-" || args[i] == ":"){
+        firstGenre = false;
+        continue;
+      }
+      if (firstGenre){
+        genre1 += args[i]+" ";
+      } else{
+        genre2 += args[i]+" ";
+      }
+    }
+    genre1 = genre1.trim();
+    genre2 = genre2.trim();
+    if (!words.containsKey(genre1)){
+      print("Genre ${genre1} not found.");
+      return;
+    }
+    if (!words.containsKey(genre2)){
+      print("Genre ${genre2} not found.");
+      return;
+    }
+    Map<String, double> genre1tfidfs = CalculateGenreTFIDF(genre1);
+    Map<String, double> genre2tfidfs = CalculateGenreTFIDF(genre2);
+    double similarity = CosineSimilarity(genre1tfidfs, genre2tfidfs);
+    print("$genre1 : $genre2 > $similarity");
+    return;
+  } else if (args[0].toLowerCase() == "getsimilar" || args[0].toLowerCase() == "similargenres"){
+    print("Similar genres:\n");
+    if (args.length < 2){
+      print("Not enough arguments supplied to calculate similar genres.");
+    }
+    String genre1 = "";
+    for (var i = 1; i < args.length; i++) {
+      genre1 += args[i]+" ";
+    }
+    genre1 = genre1.trim();
+    if (!words.containsKey(genre1)){
+      print("Genre ${genre1} not found.");
+      return;
+    }
+    Map<String, double> similaritys = new Map<String, double>();
+    Map<String, double> genre1tfidfs = CalculateGenreTFIDF(genre1);
+    for (var genre2 in words.keys){
+      if (genre2 == genre1 || genre2 == "Total Songs" || genre2 == "Total Albums") continue;
+      Map<String, double> genre2tfidfs = CalculateGenreTFIDF(genre2);
+      similaritys[genre2] = CosineSimilarity(genre1tfidfs, genre2tfidfs);
+      if (!similaritys[genre2].isFinite){
+        similaritys[genre2] = 0.0;
+      }
+    }
+    similaritys = SortByTFIDF(similaritys);
+    print("$genre1:");
+    int j = 0;
+    String toPrint = "";
+    for (var genre in similaritys.keys){
+      toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${similaritys[genre]}\n" + toPrint;
+      j++;
+      if (j == 9){
+        print(toPrint);
+        break;
+      }
+    }
+    return;
   } else{
-    if (args.length >= 1) {
+    if (args.length >= 1){
       print("Genre ${args.join(" ")} not found.");
     }
     genreName = "Power Metal";
@@ -126,6 +197,7 @@ main (List<String> args) async{
   tfIdfValues = NormalizeValues(tfIdfValues);
   for (var i = min(98, tfIdfWords.length-1); i >= 0; i--){
     print("${(i+1).toString().length >= 2 ? ((i+1).toString()) : (" "+(i+1).toString())}. : ${tfIdfWords[i]} > ${tfIdfValues[i].toStringAsFixed(8)} (${genreWords[tfIdfWords[i]]}, ${wordsContain[genreName][tfIdfWords[i]]}, ${totalContains[tfIdfWords[i]]})");
+    //print("${(i+1).toString().length >= 2 ? ((i+1).toString()) : (" "+(i+1).toString())}. ${tfIdfWords[i]}");
   }
 }
 
@@ -176,6 +248,17 @@ Map<String, double> CalculateWordGenres(String word){
   return genretfidf;
 }
 
+Map<String, double> CalculateGenreTFIDF(String genreName){
+  Map<String, double> genretfidfs = new Map<String, double>();
+  for (String word in words[genreName].keys){
+    if (wordsContain[genreName][word] < 5 || wordsContain[genreName][word] == totalContains[word] || words[genreName][word] < max(1, totalGenreWords[genreName]/10000) || word.contains("") || word.contains("�") || word.length < 2){
+      continue;
+    }
+    genretfidfs[word] = CalculateTFIDFMod(words[genreName][word], totalContains[word], wordsContain[genreName][word], words["Total Songs"][genreName], totalGenreWords[genreName]);
+  }
+  return genretfidfs;
+}
+
 Map SortByTFIDF(Map tfidfs){
   var sortedKeys = tfidfs.keys.toList(growable:false)..sort((k1, k2) => tfidfs[k1].compareTo(tfidfs[k2]));
   sortedKeys = sortedKeys.reversed;
@@ -191,4 +274,26 @@ String GetHighestTFIDF(Map<String, double> tfidfs){
     }
   }
   return max;
+}
+
+double CosineSimilarity(Map<String, double> tfidf1, Map<String, double> tfidf2){
+  for (var key in tfidf1.keys) {
+    if (!tfidf2.containsKey(key)){
+      tfidf2[key] = 0.0;
+    }
+  }
+  for (var key in tfidf2.keys) {
+    if (!tfidf1.containsKey(key)){
+      tfidf1[key] = 0.0;
+    }
+  }
+  double dotProduct = 0.0;
+  double sumA = 0.0;
+  double sumB = 0.0;
+  for (var key in tfidf1.keys) {
+    sumA += (tfidf1[key]*tfidf1[key]);
+    sumB += (tfidf2[key]*tfidf2[key]);
+    dotProduct += (tfidf1[key]*tfidf2[key]);
+  }
+  return (dotProduct/(sqrt(sumA)*sqrt(sumB)));
 }
