@@ -91,6 +91,7 @@ main (List<String> args) async{
     print("Cosine similarity of genres:\n");
     if (args.length < 3){
       print("Not enough arguments supplied to calculate similarity.");
+      return;
     }
     String genre1 = "";
     String genre2 = "";
@@ -125,6 +126,7 @@ main (List<String> args) async{
     print("Similar genres:\n");
     if (args.length < 2){
       print("Not enough arguments supplied to calculate similar genres.");
+      return;
     }
     String genre1 = "";
     for (var i = 1; i < args.length; i++) {
@@ -147,6 +149,94 @@ main (List<String> args) async{
     }
     similaritys = SortByTFIDF(similaritys);
     print("$genre1:");
+    int j = 0;
+    String toPrint = "";
+    for (var genre in similaritys.keys){
+      toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${similaritys[genre]}\n" + toPrint;
+      j++;
+      if (j == 9){
+        print(toPrint);
+        break;
+      }
+    }
+    return;
+  } else if (args[0].toLowerCase() == "textimportant" || args[0].toLowerCase() == "texttfidf"){
+    print("Text important:\n");
+    if (args.length < 2){
+      print("Not enough arguments - a text file has to be supplied.");
+      return;
+    }
+    File textfile = new File(args[1]);
+    if (!textfile.existsSync()){
+      print("File ${args[1]} not found.");
+      return;
+    }
+    String text = textfile.readAsStringSync();
+    text = text.replaceAll(new RegExp("[\"?!,.:}{)()]"), "");
+    text = text.replaceAll("\n", " ");
+    text = text.toLowerCase();
+    List<String> textWords = text.split(" ");
+    Map<String, int> textCounts = new Map<String, int>();
+    for (var i = 0; i < textWords.length; i++){
+      if (textCounts.containsKey(textWords[i])){
+        textCounts[textWords[i]]++;
+      } else{
+        textCounts[textWords[i]] = 1;
+      }
+    }
+    Map<String, double> texttfidfs = CalculateTextTFIDF(textCounts);
+    texttfidfs = NormalizeMapValues(texttfidfs);
+    texttfidfs = SortByTFIDF(texttfidfs);
+    print("${args[1]} most important words:");
+    int j = 0;
+    String toPrint = "";
+    for (var word in texttfidfs.keys){
+      toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $word > ${texttfidfs[word]}\n" + toPrint;
+      j++;
+      if (j == 50 || j == texttfidfs.keys.length-1){
+        print(toPrint);
+        break;
+      }
+    }
+    return;
+  } else if (args[0].toLowerCase() == "textgenre" || args[0].toLowerCase() == "text"){
+    print("Text genre:\n");
+    if (args.length < 2){
+      print("Not enough arguments - a text file has to be supplied.");
+      return;
+    }
+    File textfile = new File(args[1]);
+    if (!textfile.existsSync()){
+      print("File ${args[1]} not found.");
+      return;
+    }
+    String text = textfile.readAsStringSync();
+    text = text.replaceAll(new RegExp("[\"?!,.:}{)()];"), "");
+    text = text.replaceAll("\n", " ");
+    text = text.toLowerCase();
+    List<String> textWords = text.split(" ");
+    Map<String, int> textCounts = new Map<String, int>();
+    for (var i = 0; i < textWords.length; i++){
+      if (textCounts.containsKey(textWords[i])){
+        textCounts[textWords[i]]++;
+      } else{
+        textCounts[textWords[i]] = 1;
+      }
+    }
+    Map<String, double> similaritys = new Map<String, double>();
+    Map<String, double> texttfidfs = CalculateTextTFIDF(textCounts);
+    texttfidfs = NormalizeMapValues(texttfidfs);
+    for (var genre2 in words.keys){
+      if (genre2 == "Total Songs" || genre2 == "Total Albums") continue;
+      Map<String, double> genre2tfidfs = CalculateGenreTFIDF(genre2);
+      genre2tfidfs = NormalizeMapValues(genre2tfidfs);
+      similaritys[genre2] = TextSimilarity(texttfidfs, genre2tfidfs);
+      if (!similaritys[genre2].isFinite){
+        similaritys[genre2] = 0.0;
+      }
+    }
+    similaritys = SortByTFIDF(similaritys);
+    print("${args[1]} most probable genres:");
     int j = 0;
     String toPrint = "";
     for (var genre in similaritys.keys){
@@ -220,22 +310,43 @@ double CalculateTFIDFNormalized(int termFrequency, int documentFrequency, int so
 
 double CalculateTFIDFMod(int termFrequency, int documentFrequency, int songFrequency, int genreSongs, int totalWords){
   if (termFrequency == null) termFrequency = 0;
-  if (documentFrequency == null) documentFrequency = 0;
+  if (documentFrequency == null) documentFrequency = 1;
   if (songFrequency == null) songFrequency = 0;
   double tf = pow(termFrequency/totalWords, 1) * pow(songFrequency/genreSongs, 1);
   double idf = pow(1/(documentFrequency/(totalsongs)), 2);
   return tf*idf;
 }
 
+double CalculateTFIDFSingle(int termFrequency, int documentFrequency, int totalWords){
+  if (termFrequency == null) termFrequency = 0;
+  if (documentFrequency == null) documentFrequency = 1;
+  double tf = pow(termFrequency/totalWords, 1);
+  double idf = log(1/(documentFrequency/(totalsongs)));
+  return tf*idf;
+}
+
 List<double> NormalizeValues(List<double> values){
   double max = values[0];
-  for (var i = 1; i < values.length; i++) {
+  for (var i = 1; i < values.length; i++){
     if (values[i] > max){
       max = values[i];
     }
   }
-  for (var i = 0; i < values.length; i++) {
+  for (var i = 0; i < values.length; i++){
     values[i] = values[i]/max;
+  }
+  return values;
+}
+
+Map<String, double> NormalizeMapValues(Map<String, double> values){
+  double max;
+  for (String word in values.keys){
+    if (max == null || values[word] > max){
+      max = values[word];
+    }
+  }
+  for (String word in values.keys){
+    values[word] = values[word]/max;
   }
   return values;
 }
@@ -255,6 +366,21 @@ Map<String, double> CalculateGenreTFIDF(String genreName){
       continue;
     }
     genretfidfs[word] = CalculateTFIDFMod(words[genreName][word], totalContains[word], wordsContain[genreName][word], words["Total Songs"][genreName], totalGenreWords[genreName]);
+  }
+  return genretfidfs;
+}
+
+Map<String, double> CalculateTextTFIDF(Map<String, int> text){
+  Map<String, double> genretfidfs = new Map<String, double>();
+  int total = 0;
+  for (String word in text.keys){
+    total += text[word];
+  }
+  for (String word in text.keys){
+    if (word.contains("") || word.contains("�") || word.length < 2){
+      continue;
+    }
+    genretfidfs[word] = CalculateTFIDFSingle(text[word], totalContains[word], total);
   }
   return genretfidfs;
 }
@@ -282,7 +408,7 @@ double CosineSimilarity(Map<String, double> tfidf1, Map<String, double> tfidf2){
       tfidf2[key] = 0.0;
     }
   }
-  for (var key in tfidf2.keys) {
+  for (var key in tfidf2.keys){
     if (!tfidf1.containsKey(key)){
       tfidf1[key] = 0.0;
     }
@@ -290,10 +416,27 @@ double CosineSimilarity(Map<String, double> tfidf1, Map<String, double> tfidf2){
   double dotProduct = 0.0;
   double sumA = 0.0;
   double sumB = 0.0;
-  for (var key in tfidf1.keys) {
+  for (var key in tfidf1.keys){
     sumA += (tfidf1[key]*tfidf1[key]);
     sumB += (tfidf2[key]*tfidf2[key]);
     dotProduct += (tfidf1[key]*tfidf2[key]);
+  }
+  return (dotProduct/(sqrt(sumA)*sqrt(sumB)));
+}
+
+double TextSimilarity(Map<String, double> texttfidf, Map<String, double> tfidf2){
+  for (var key in texttfidf.keys) {
+    if (!tfidf2.containsKey(key)){
+      tfidf2[key] = 0.0;
+    }
+  }
+  double dotProduct = 0.0;
+  double sumA = 0.0;
+  double sumB = 0.0;
+  for (var key in texttfidf.keys){
+    sumA += (texttfidf[key]*texttfidf[key]);
+    sumB += (tfidf2[key]*tfidf2[key]);
+    dotProduct += (texttfidf[key]*tfidf2[key]);
   }
   return (dotProduct/(sqrt(sumA)*sqrt(sumB)));
 }

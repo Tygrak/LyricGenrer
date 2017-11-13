@@ -155,7 +155,7 @@ String HtmlAsciiConvert(String text){
 }
 
 List<String> GetWordsFromSong(String text){
-  text = text.replaceAll(new RegExp("[\"?!,.:}{)()]"), "");
+  text = text.replaceAll(new RegExp("[\"?!,.:}{)()];"), "");
   text = text.replaceAll("\n", " ");
   text = text.toLowerCase();
   return text.split(" ");
