@@ -8,8 +8,11 @@ Map<String, Map<String, int>> words;
 Map<String, Map<String, int>> wordsContain;
 Map<String, int> totalGenreWords;
 Map<String, int> totalContains;
+int amount;
+bool resultDetailed = true;
 
 main (List<String> args) async{
+  List<String> argsC = new List.from(args);
   words = new Map<String, Map<String, int>>();
   wordsContain = new Map<String, Map<String, int>>();
   {
@@ -30,6 +33,32 @@ main (List<String> args) async{
       }
     }
   }
+  if (argsC.contains("-a")){
+    amount = int.parse(argsC[argsC.indexOf("-a")+1]);
+    argsC.removeAt(argsC.indexOf("-a")+1);
+    argsC.removeAt(argsC.indexOf("-a"));
+  }
+  if (argsC.contains("-num")){
+    amount = int.parse(argsC[argsC.indexOf("-num")+1]);
+    argsC.removeAt(argsC.indexOf("-num")+1);
+    argsC.removeAt(argsC.indexOf("-num"));
+  }
+  if (argsC.contains("-detailed")){
+    resultDetailed = true;
+    argsC.removeAt(argsC.indexOf("-detailed"));
+  }
+  if (argsC.contains("-undetailed")){
+    resultDetailed = false;
+    argsC.removeAt(argsC.indexOf("-undetailed"));
+  }
+  if (argsC.contains("-nodetail")){
+    resultDetailed = false;
+    argsC.removeAt(argsC.indexOf("-nodetail"));
+  }
+  if (argsC.contains("-nodetails")){
+    resultDetailed = false;
+    argsC.removeAt(argsC.indexOf("-nodetails"));
+  }
   totalContains = new Map<String, int>();
   for (String genre in wordsContain.keys){
     for (String word in wordsContain[genre].keys){
@@ -41,15 +70,15 @@ main (List<String> args) async{
     }
   }
   String genreName;
-  if (args.length >= 1 && words.containsKey(args.join(" "))){
-    genreName = args.join(" ");
-  } else if (args[0].toLowerCase() == "genres" || args[0].toLowerCase() == "genre"){
+  if (argsC.length >= 1 && words.containsKey(argsC.join(" "))){
+    genreName = argsC.join(" ");
+  } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "genres" || argsC[0].toLowerCase() == "genre")){
     print("Genres:");
     int i = 2;
     String line = "";
     String contains = "";
-    if (args.length > 1){
-      contains = args[1].toLowerCase();
+    if (argsC.length > 1){
+      contains = argsC[1].toLowerCase();
     }
     for (String word in words["Total Songs"].keys) {
       if (word.toLowerCase().contains(contains)){
@@ -69,42 +98,46 @@ main (List<String> args) async{
       }
     }
     return;
-  } else if (args[0].toLowerCase() == "word" || args[0].toLowerCase() == "words"){
+  } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "word" || argsC[0].toLowerCase() == "words")){
     print("Words:\n");
-    for (var i = 1; i < args.length; i++) {
-      Map<String, double> wordGenreTFIDF = CalculateWordGenres(args[i].toLowerCase());
+    for (var i = 1; i < argsC.length; i++) {
+      Map<String, double> wordGenreTFIDF = CalculateWordGenres(argsC[i].toLowerCase());
       wordGenreTFIDF = SortByTFIDF(wordGenreTFIDF);
-      print("${args[i].toLowerCase()}:");
+      print("${argsC[i].toLowerCase()}:");
       int j = 0;
       String toPrint = "";
       for (var genre in wordGenreTFIDF.keys) {
-        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${wordGenreTFIDF[genre]}\n" + toPrint;
+        if (resultDetailed){
+          toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${wordGenreTFIDF[genre]}\n" + toPrint;
+        } else{
+          toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre\n" + toPrint;
+        }
         j++;
-        if (j == 9){
+        if (j == (amount == null ? 9 : amount)){
           print(toPrint);
           break;
         }
       }
     }
     return;
-  } else if (args[0].toLowerCase() == "similarity" || args[0].toLowerCase() == "similar"){
+  } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "similarity" || argsC[0].toLowerCase() == "similar")){
     print("Cosine similarity of genres:\n");
-    if (args.length < 3){
+    if (argsC.length < 3){
       print("Not enough arguments supplied to calculate similarity.");
       return;
     }
     String genre1 = "";
     String genre2 = "";
     bool firstGenre = true;
-    for (var i = 1; i < args.length; i++) {
-      if (args[i] == "-" || args[i] == ":"){
+    for (var i = 1; i < argsC.length; i++) {
+      if (argsC[i] == "-" || argsC[i] == ":"){
         firstGenre = false;
         continue;
       }
       if (firstGenre){
-        genre1 += args[i]+" ";
+        genre1 += argsC[i]+" ";
       } else{
-        genre2 += args[i]+" ";
+        genre2 += argsC[i]+" ";
       }
     }
     genre1 = genre1.trim();
@@ -122,15 +155,15 @@ main (List<String> args) async{
     double similarity = CosineSimilarity(genre1tfidfs, genre2tfidfs);
     print("$genre1 : $genre2 > $similarity");
     return;
-  } else if (args[0].toLowerCase() == "getsimilar" || args[0].toLowerCase() == "similargenres"){
+  } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "getsimilar" || argsC[0].toLowerCase() == "similargenres")){
     print("Similar genres:\n");
-    if (args.length < 2){
+    if (argsC.length < 2){
       print("Not enough arguments supplied to calculate similar genres.");
       return;
     }
     String genre1 = "";
-    for (var i = 1; i < args.length; i++) {
-      genre1 += args[i]+" ";
+    for (var i = 1; i < argsC.length; i++) {
+      genre1 += argsC[i]+" ";
     }
     genre1 = genre1.trim();
     if (!words.containsKey(genre1)){
@@ -152,23 +185,27 @@ main (List<String> args) async{
     int j = 0;
     String toPrint = "";
     for (var genre in similaritys.keys){
-      toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${similaritys[genre]}\n" + toPrint;
+      if (resultDetailed){
+        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${similaritys[genre]}\n" + toPrint;
+      } else{
+        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre\n" + toPrint;
+      }
       j++;
-      if (j == 9){
+      if (j == (amount == null ? 9 : amount)){
         print(toPrint);
         break;
       }
     }
     return;
-  } else if (args[0].toLowerCase() == "textimportant" || args[0].toLowerCase() == "texttfidf"){
+  } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "textimportant" || argsC[0].toLowerCase() == "texttfidf")){
     print("Text important:\n");
-    if (args.length < 2){
+    if (argsC.length < 2){
       print("Not enough arguments - a text file has to be supplied.");
       return;
     }
-    File textfile = new File(args[1]);
+    File textfile = new File(argsC[1]);
     if (!textfile.existsSync()){
-      print("File ${args[1]} not found.");
+      print("File ${argsC[1]} not found.");
       return;
     }
     String text = textfile.readAsStringSync();
@@ -187,27 +224,31 @@ main (List<String> args) async{
     Map<String, double> texttfidfs = CalculateTextTFIDF(textCounts);
     texttfidfs = NormalizeMapValues(texttfidfs);
     texttfidfs = SortByTFIDF(texttfidfs);
-    print("${args[1]} most important words:");
+    print("${argsC[1]} most important words:");
     int j = 0;
     String toPrint = "";
     for (var word in texttfidfs.keys){
-      toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $word > ${texttfidfs[word]}\n" + toPrint;
+      if (resultDetailed){
+        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $word > ${texttfidfs[word]}\n" + toPrint;
+      } else{
+        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $word\n" + toPrint;
+      }
       j++;
-      if (j == 50 || j == texttfidfs.keys.length-1){
+      if (j == (amount == null ? 50 : amount) || j == texttfidfs.keys.length-1){
         print(toPrint);
         break;
       }
     }
     return;
-  } else if (args[0].toLowerCase() == "textgenre" || args[0].toLowerCase() == "text"){
+  } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "textgenre" || argsC[0].toLowerCase() == "text")){
     print("Text genre:\n");
-    if (args.length < 2){
+    if (argsC.length < 2){
       print("Not enough arguments - a text file has to be supplied.");
       return;
     }
-    File textfile = new File(args[1]);
+    File textfile = new File(argsC[1]);
     if (!textfile.existsSync()){
-      print("File ${args[1]} not found.");
+      print("File ${argsC[1]} not found.");
       return;
     }
     String text = textfile.readAsStringSync();
@@ -236,21 +277,25 @@ main (List<String> args) async{
       }
     }
     similaritys = SortByTFIDF(similaritys);
-    print("${args[1]} most probable genres:");
+    print("${argsC[1]} most probable genres:");
     int j = 0;
     String toPrint = "";
     for (var genre in similaritys.keys){
-      toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${similaritys[genre]}\n" + toPrint;
+      if (resultDetailed){
+        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${similaritys[genre].toStringAsFixed(5)}\n" + toPrint;
+      } else{
+        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre\n" + toPrint;
+      }
       j++;
-      if (j == 9){
+      if (j == (amount == null ? 9 : amount)){
         print(toPrint);
         break;
       }
     }
     return;
   } else{
-    if (args.length >= 1){
-      print("Genre ${args.join(" ")} not found.");
+    if (argsC.length >= 1){
+      print("Genre ${argsC.join(" ")} not found.");
     }
     genreName = "Power Metal";
   }
@@ -285,9 +330,12 @@ main (List<String> args) async{
     }
   }
   tfIdfValues = NormalizeValues(tfIdfValues);
-  for (var i = min(98, tfIdfWords.length-1); i >= 0; i--){
-    print("${(i+1).toString().length >= 2 ? ((i+1).toString()) : (" "+(i+1).toString())}. : ${tfIdfWords[i]} > ${tfIdfValues[i].toStringAsFixed(8)} (${genreWords[tfIdfWords[i]]}, ${wordsContain[genreName][tfIdfWords[i]]}, ${totalContains[tfIdfWords[i]]})");
-    //print("${(i+1).toString().length >= 2 ? ((i+1).toString()) : (" "+(i+1).toString())}. ${tfIdfWords[i]}");
+  for (var i = min((amount == null ? 98 : amount-1), tfIdfWords.length-1); i >= 0; i--){
+    if (resultDetailed){
+      print("${(i+1).toString().length >= 2 ? ((i+1).toString()) : (" "+(i+1).toString())}. : ${tfIdfWords[i]} > ${tfIdfValues[i].toStringAsFixed(8)} (${genreWords[tfIdfWords[i]]}, ${wordsContain[genreName][tfIdfWords[i]]}, ${totalContains[tfIdfWords[i]]})");
+    } else{
+      print("${(i+1).toString().length >= 2 ? ((i+1).toString()) : (" "+(i+1).toString())}. ${tfIdfWords[i]}");
+    }
   }
 }
 

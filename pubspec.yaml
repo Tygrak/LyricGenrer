@@ -1,4 +1,4 @@
-name: nbaresults
+name: lyricgenrer
 dependencies:
   dartscraper:
     path: /home/tygrak/Programming/Dart/DartScraper
