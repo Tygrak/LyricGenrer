@@ -9,6 +9,8 @@ Map<String, Map<String, int>> wordsContain;
 Map<String, int> totalGenreWords;
 Map<String, int> totalContains;
 int amount;
+int columnSpaces;
+int perColumn;
 bool resultDetailed = true;
 
 main (List<String> args) async{
@@ -59,6 +61,21 @@ main (List<String> args) async{
     resultDetailed = false;
     argsC.removeAt(argsC.indexOf("-nodetails"));
   }
+  if (argsC.contains("-space")){
+    columnSpaces = int.parse(argsC[argsC.indexOf("-space")+1]);
+    argsC.removeAt(argsC.indexOf("-space")+1);
+    argsC.removeAt(argsC.indexOf("-space"));
+  }
+  if (argsC.contains("-columns")){
+    perColumn = int.parse(argsC[argsC.indexOf("-columns")+1]);
+    argsC.removeAt(argsC.indexOf("-columns")+1);
+    argsC.removeAt(argsC.indexOf("-columns"));
+  }
+  if (argsC.contains("-perrow")){
+    perColumn = int.parse(argsC[argsC.indexOf("-perrow")+1]);
+    argsC.removeAt(argsC.indexOf("-perrow")+1);
+    argsC.removeAt(argsC.indexOf("-perrow"));
+  }
   totalContains = new Map<String, int>();
   for (String genre in wordsContain.keys){
     for (String word in wordsContain[genre].keys){
@@ -74,7 +91,7 @@ main (List<String> args) async{
     genreName = argsC.join(" ");
   } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "genres" || argsC[0].toLowerCase() == "genre")){
     print("Genres:");
-    int i = 2;
+    int i = (perColumn == null ? 2 : perColumn);
     String line = "";
     String contains = "";
     if (argsC.length > 1){
@@ -82,19 +99,68 @@ main (List<String> args) async{
     }
     for (String word in words["Total Songs"].keys) {
       if (word.toLowerCase().contains(contains)){
-        line += word;
         i--;
+        if (i == 0){
+          line += word.trim();
+        } else if (columnSpaces != null && columnSpaces < 1){
+          line += word.trim() + " ";
+        } else{
+          line += word.trim().padRight((columnSpaces == null ? 42 : columnSpaces));
+        }
       } else{
         continue;
       }
       if (i == 0){
-        i = 2;
+        i = (perColumn == null ? 2 : perColumn);
         print(line);
         line = "";
         continue;
       }
-      for (var j = word.length; j < 42; j++) {
-        line += " ";
+    }
+    return;
+  } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "genresongs" || argsC[0].toLowerCase() == "genredetailed")){
+    print("Genres Songs:");
+    int i = (perColumn == null ? 2 : perColumn);
+    int maxAmount = (amount == null ? 1000 : amount)+1;
+    if (words["Total Songs"].keys.length < maxAmount){
+      maxAmount = words["Total Songs"].keys.length;
+    }
+    int j = maxAmount;
+    String line = "";
+    String contains = "";
+    if (argsC.length > 1){
+      contains = argsC[1].toLowerCase();
+    }
+    words["Total Songs"] = SortMapFromHighest(words["Total Songs"]);
+    words["Total Songs"] = ReverseMap(words["Total Songs"]);
+    int pos = 0;
+    for (String word in words["Total Songs"].keys) {
+      pos++;
+      if (pos < words["Total Songs"].keys.length-maxAmount+1){
+        continue;
+      }
+      if (word.toLowerCase().contains(contains)){
+        j--;
+        if (j == 0){
+          print(line);
+          break;
+        }
+        i--;
+        if (i == 0){
+          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${words["Total Songs"][word]} - ${words["Total Albums"][word]}";
+        } else if (columnSpaces != null && columnSpaces < 1){
+          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${words["Total Songs"][word]} - ${words["Total Albums"][word]} ";
+        } else{
+          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${words["Total Songs"][word]} - ${words["Total Albums"][word]} ".padRight((columnSpaces == null ? 42 : columnSpaces));
+        }
+      } else{
+        continue;
+      }
+      if (i == 0){
+        i = (perColumn == null ? 2 : perColumn);
+        print(line);
+        line = "";
+        continue;
       }
     }
     return;
@@ -102,15 +168,15 @@ main (List<String> args) async{
     print("Words:\n");
     for (var i = 1; i < argsC.length; i++) {
       Map<String, double> wordGenreTFIDF = CalculateWordGenres(argsC[i].toLowerCase());
-      wordGenreTFIDF = SortByTFIDF(wordGenreTFIDF);
+      wordGenreTFIDF = SortMapFromHighest(wordGenreTFIDF);
       print("${argsC[i].toLowerCase()}:");
       int j = 0;
       String toPrint = "";
       for (var genre in wordGenreTFIDF.keys) {
         if (resultDetailed){
-          toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${wordGenreTFIDF[genre]}\n" + toPrint;
+          toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre > ${wordGenreTFIDF[genre]}\n" + toPrint;
         } else{
-          toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre\n" + toPrint;
+          toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
         }
         j++;
         if (j == (amount == null ? 9 : amount)){
@@ -180,15 +246,15 @@ main (List<String> args) async{
         similaritys[genre2] = 0.0;
       }
     }
-    similaritys = SortByTFIDF(similaritys);
+    similaritys = SortMapFromHighest(similaritys);
     print("$genre1:");
     int j = 0;
     String toPrint = "";
     for (var genre in similaritys.keys){
       if (resultDetailed){
-        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${similaritys[genre]}\n" + toPrint;
+        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre > ${similaritys[genre]}\n" + toPrint;
       } else{
-        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre\n" + toPrint;
+        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
       }
       j++;
       if (j == (amount == null ? 9 : amount)){
@@ -223,15 +289,15 @@ main (List<String> args) async{
     }
     Map<String, double> texttfidfs = CalculateTextTFIDF(textCounts);
     texttfidfs = NormalizeMapValues(texttfidfs);
-    texttfidfs = SortByTFIDF(texttfidfs);
+    texttfidfs = SortMapFromHighest(texttfidfs);
     print("${argsC[1]} most important words:");
     int j = 0;
     String toPrint = "";
     for (var word in texttfidfs.keys){
       if (resultDetailed){
-        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $word > ${texttfidfs[word]}\n" + toPrint;
+        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $word > ${texttfidfs[word]}\n" + toPrint;
       } else{
-        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $word\n" + toPrint;
+        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $word\n" + toPrint;
       }
       j++;
       if (j == (amount == null ? 50 : amount) || j == texttfidfs.keys.length-1){
@@ -276,15 +342,15 @@ main (List<String> args) async{
         similaritys[genre2] = 0.0;
       }
     }
-    similaritys = SortByTFIDF(similaritys);
+    similaritys = SortMapFromHighest(similaritys);
     print("${argsC[1]} most probable genres:");
     int j = 0;
     String toPrint = "";
     for (var genre in similaritys.keys){
       if (resultDetailed){
-        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre > ${similaritys[genre].toStringAsFixed(5)}\n" + toPrint;
+        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre > ${similaritys[genre].toStringAsFixed(5)}\n" + toPrint;
       } else{
-        toPrint = " ${(j+1).toString().length >= 2 ? ((j+1).toString()) : (" "+(j+1).toString())}. : $genre\n" + toPrint;
+        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
       }
       j++;
       if (j == (amount == null ? 9 : amount)){
@@ -332,9 +398,9 @@ main (List<String> args) async{
   tfIdfValues = NormalizeValues(tfIdfValues);
   for (var i = min((amount == null ? 98 : amount-1), tfIdfWords.length-1); i >= 0; i--){
     if (resultDetailed){
-      print("${(i+1).toString().length >= 2 ? ((i+1).toString()) : (" "+(i+1).toString())}. : ${tfIdfWords[i]} > ${tfIdfValues[i].toStringAsFixed(8)} (${genreWords[tfIdfWords[i]]}, ${wordsContain[genreName][tfIdfWords[i]]}, ${totalContains[tfIdfWords[i]]})");
+      print("${i.toString().padLeft(amount.toString().length)}. : ${tfIdfWords[i]} > ${tfIdfValues[i].toStringAsFixed(8)} (${genreWords[tfIdfWords[i]]}, ${wordsContain[genreName][tfIdfWords[i]]}, ${totalContains[tfIdfWords[i]]})");
     } else{
-      print("${(i+1).toString().length >= 2 ? ((i+1).toString()) : (" "+(i+1).toString())}. ${tfIdfWords[i]}");
+      print("${i.toString().padLeft(amount.toString().length)}. ${tfIdfWords[i]}");
     }
   }
 }
@@ -433,10 +499,17 @@ Map<String, double> CalculateTextTFIDF(Map<String, int> text){
   return genretfidfs;
 }
 
-Map SortByTFIDF(Map tfidfs){
-  var sortedKeys = tfidfs.keys.toList(growable:false)..sort((k1, k2) => tfidfs[k1].compareTo(tfidfs[k2]));
+Map SortMapFromHighest(Map toSort){
+  var sortedKeys = toSort.keys.toList(growable:false)..sort((k1, k2) => toSort[k1].compareTo(toSort[k2]));
   sortedKeys = sortedKeys.reversed;
-  LinkedHashMap sortedMap = new LinkedHashMap.fromIterable(sortedKeys, key: (k) => k, value: (k) => tfidfs[k]);
+  LinkedHashMap sortedMap = new LinkedHashMap.fromIterable(sortedKeys, key: (k) => k, value: (k) => toSort[k]);
+  return sortedMap;
+}
+
+Map ReverseMap(Map toReverse){
+  var sortedKeys = toReverse.keys.toList(growable:false);
+  sortedKeys = sortedKeys.reversed;
+  LinkedHashMap sortedMap = new LinkedHashMap.fromIterable(sortedKeys, key: (k) => k, value: (k) => toReverse[k]);
   return sortedMap;
 }
 
