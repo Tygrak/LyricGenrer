@@ -10,31 +10,11 @@ Map<String, int> totalGenreWords;
 Map<String, int> totalContains;
 int amount;
 int columnSpaces;
-int perColumn;
+int lineColumns;
 bool resultDetailed = true;
 
 main (List<String> args) async{
   List<String> argsC = new List.from(args);
-  words = new Map<String, Map<String, int>>();
-  wordsContain = new Map<String, Map<String, int>>();
-  {
-    File outputFile = new File("words.json");
-    File outputContainFile = new File("wordscontain.json");
-    words = JSON.decode(outputFile.readAsStringSync());
-    wordsContain = JSON.decode(outputContainFile.readAsStringSync());
-    totalsongs = words["Total Songs"]["All"];
-    print("Loaded data from ${totalsongs} songs from ${words["Total Albums"]["All"]} albums, split into ${words.length} genres.\n");
-  }
-  totalGenreWords = new Map<String, int>();
-  for (String genre in words.keys){
-    for (String word in words[genre].keys){
-      if (totalGenreWords.containsKey(genre)){
-        totalGenreWords[genre] += words[genre][word];
-      } else{
-        totalGenreWords[genre] = words[genre][word];
-      }
-    }
-  }
   if (argsC.contains("-a")){
     amount = int.parse(argsC[argsC.indexOf("-a")+1]);
     argsC.removeAt(argsC.indexOf("-a")+1);
@@ -66,15 +46,74 @@ main (List<String> args) async{
     argsC.removeAt(argsC.indexOf("-space")+1);
     argsC.removeAt(argsC.indexOf("-space"));
   }
+  if (argsC.contains("-spaces")){
+    columnSpaces = int.parse(argsC[argsC.indexOf("-spaces")+1]);
+    argsC.removeAt(argsC.indexOf("-spaces")+1);
+    argsC.removeAt(argsC.indexOf("-spaces"));
+  }
   if (argsC.contains("-columns")){
-    perColumn = int.parse(argsC[argsC.indexOf("-columns")+1]);
+    lineColumns = int.parse(argsC[argsC.indexOf("-columns")+1]);
     argsC.removeAt(argsC.indexOf("-columns")+1);
     argsC.removeAt(argsC.indexOf("-columns"));
   }
   if (argsC.contains("-perrow")){
-    perColumn = int.parse(argsC[argsC.indexOf("-perrow")+1]);
+    lineColumns = int.parse(argsC[argsC.indexOf("-perrow")+1]);
     argsC.removeAt(argsC.indexOf("-perrow")+1);
     argsC.removeAt(argsC.indexOf("-perrow"));
+  }
+  words = new Map<String, Map<String, int>>();
+  wordsContain = new Map<String, Map<String, int>>();
+  {
+    File outputFile = new File("words.json");
+    File outputContainFile = new File("wordscontain.json");
+    words = JSON.decode(outputFile.readAsStringSync());
+    wordsContain = JSON.decode(outputContainFile.readAsStringSync());
+    totalsongs = words["Total Songs"]["All"];
+    List<String> toRemove = new List<String>();
+    int removeUnder = 2;
+    int removeUnderSongs = 5;
+    if (argsC.contains("-removeunder")){
+      removeUnder = int.parse(argsC[argsC.indexOf("-removeunder")+1]);
+      argsC.removeAt(argsC.indexOf("-removeunder")+1);
+      argsC.removeAt(argsC.indexOf("-removeunder"));
+    }
+    if (argsC.contains("-minalbums")){
+      removeUnder = int.parse(argsC[argsC.indexOf("-minalbums")+1]);
+      argsC.removeAt(argsC.indexOf("-minalbums")+1);
+      argsC.removeAt(argsC.indexOf("-minalbums"));
+    }
+    if (argsC.contains("-minsongs")){
+      removeUnderSongs = int.parse(argsC[argsC.indexOf("-minsongs")+1]);
+      argsC.removeAt(argsC.indexOf("-minsongs")+1);
+      argsC.removeAt(argsC.indexOf("-minsongs"));
+    }
+    for (String genre in words["Total Albums"].keys){
+      if (words["Total Albums"][genre] <= removeUnder-1 && !toRemove.contains(genre)){
+        toRemove.add(genre);
+      }
+    }
+    for (String genre in words["Total Songs"].keys){
+      if (words["Total Songs"][genre] <= removeUnderSongs-1 && !toRemove.contains(genre)){
+        toRemove.add(genre);
+      }
+    }
+    for (int i = 0; i < toRemove.length; i++){
+      words["Total Albums"].remove(toRemove[i]);
+      words["Total Songs"].remove(toRemove[i]);
+      wordsContain.remove(toRemove[i]);
+      words.remove(toRemove[i]);
+    }
+    print("Loaded data from ${totalsongs} songs from ${words["Total Albums"]["All"]} albums, split into ${words.length} genres.\n");
+  }
+  totalGenreWords = new Map<String, int>();
+  for (String genre in words.keys){
+    for (String word in words[genre].keys){
+      if (totalGenreWords.containsKey(genre)){
+        totalGenreWords[genre] += words[genre][word];
+      } else{
+        totalGenreWords[genre] = words[genre][word];
+      }
+    }
   }
   totalContains = new Map<String, int>();
   for (String genre in wordsContain.keys){
@@ -91,7 +130,7 @@ main (List<String> args) async{
     genreName = argsC.join(" ");
   } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "genres" || argsC[0].toLowerCase() == "genre")){
     print("Genres:");
-    int i = (perColumn == null ? 2 : perColumn);
+    int i = (lineColumns == null ? 2 : lineColumns);
     String line = "";
     String contains = "";
     if (argsC.length > 1){
@@ -111,7 +150,7 @@ main (List<String> args) async{
         continue;
       }
       if (i == 0){
-        i = (perColumn == null ? 2 : perColumn);
+        i = (lineColumns == null ? 2 : lineColumns);
         print(line);
         line = "";
         continue;
@@ -120,12 +159,7 @@ main (List<String> args) async{
     return;
   } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "genresongs" || argsC[0].toLowerCase() == "genredetailed")){
     print("Genres Songs:");
-    int i = (perColumn == null ? 2 : perColumn);
-    int maxAmount = (amount == null ? 1000 : amount)+1;
-    if (words["Total Songs"].keys.length < maxAmount){
-      maxAmount = words["Total Songs"].keys.length;
-    }
-    int j = maxAmount;
+    int i = (lineColumns == null ? 2 : lineColumns);
     String line = "";
     String contains = "";
     if (argsC.length > 1){
@@ -133,31 +167,46 @@ main (List<String> args) async{
     }
     words["Total Songs"] = SortMapFromHighest(words["Total Songs"]);
     words["Total Songs"] = ReverseMap(words["Total Songs"]);
+    Map<String, int> genresSelected = new Map<String, int>();
     int pos = 0;
-    for (String word in words["Total Songs"].keys) {
+    if (contains != ""){
+      for (String word in words["Total Songs"].keys) {
+        if (word.toLowerCase().contains(contains)){
+          genresSelected[word] = words["Total Songs"][word];
+        }
+      }
+    } else{
+      genresSelected = words["Total Songs"];
+    }
+    int maxAmount = (amount == null ? 1000 : amount)+1;
+    if (genresSelected.keys.length < maxAmount){
+      maxAmount = genresSelected.keys.length;
+    }
+    int j = maxAmount;
+    for (String word in genresSelected.keys) {
       pos++;
-      if (pos < words["Total Songs"].keys.length-maxAmount+1){
+      if (pos <= genresSelected.keys.length-maxAmount+1){
         continue;
       }
       if (word.toLowerCase().contains(contains)){
         j--;
-        if (j == 0){
+        /*if (j == 0){
           print(line);
           break;
-        }
+        }*/
         i--;
         if (i == 0){
-          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${words["Total Songs"][word]} - ${words["Total Albums"][word]}";
+          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${genresSelected[word]} - ${words["Total Albums"][word]}";
         } else if (columnSpaces != null && columnSpaces < 1){
-          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${words["Total Songs"][word]} - ${words["Total Albums"][word]} ";
+          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${genresSelected[word]} - ${words["Total Albums"][word]} ";
         } else{
-          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${words["Total Songs"][word]} - ${words["Total Albums"][word]} ".padRight((columnSpaces == null ? 42 : columnSpaces));
+          line += "${j.toString().padLeft(amount.toString().length)}. ${word.trim()} - ${genresSelected[word]} - ${words["Total Albums"][word]} ".padRight((columnSpaces == null ? 42 : columnSpaces));
         }
       } else{
         continue;
       }
       if (i == 0){
-        i = (perColumn == null ? 2 : perColumn);
+        i = (lineColumns == null ? 2 : lineColumns);
         print(line);
         line = "";
         continue;
@@ -169,14 +218,15 @@ main (List<String> args) async{
     for (var i = 1; i < argsC.length; i++) {
       Map<String, double> wordGenreTFIDF = CalculateWordGenres(argsC[i].toLowerCase());
       wordGenreTFIDF = SortMapFromHighest(wordGenreTFIDF);
+      wordGenreTFIDF = NormalizeMapValues(wordGenreTFIDF);
       print("${argsC[i].toLowerCase()}:");
       int j = 0;
       String toPrint = "";
       for (var genre in wordGenreTFIDF.keys) {
         if (resultDetailed){
-          toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre > ${wordGenreTFIDF[genre]}\n" + toPrint;
+          toPrint = " ${(j+1).toString().padLeft(amount.toString().length)}. : $genre > ${wordGenreTFIDF[genre]}\n" + toPrint;
         } else{
-          toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
+          toPrint = " ${(j+1).toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
         }
         j++;
         if (j == (amount == null ? 9 : amount)){
@@ -252,9 +302,9 @@ main (List<String> args) async{
     String toPrint = "";
     for (var genre in similaritys.keys){
       if (resultDetailed){
-        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre > ${similaritys[genre]}\n" + toPrint;
+        toPrint = " ${(j+1).toString().padLeft(amount.toString().length)}. : $genre > ${similaritys[genre]}\n" + toPrint;
       } else{
-        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
+        toPrint = " ${(j+1).toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
       }
       j++;
       if (j == (amount == null ? 9 : amount)){
@@ -295,9 +345,9 @@ main (List<String> args) async{
     String toPrint = "";
     for (var word in texttfidfs.keys){
       if (resultDetailed){
-        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $word > ${texttfidfs[word]}\n" + toPrint;
+        toPrint = " ${(j+1).toString().padLeft(amount.toString().length)}. : $word > ${texttfidfs[word]}\n" + toPrint;
       } else{
-        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $word\n" + toPrint;
+        toPrint = " ${(j+1).toString().padLeft(amount.toString().length)}. : $word\n" + toPrint;
       }
       j++;
       if (j == (amount == null ? 50 : amount) || j == texttfidfs.keys.length-1){
@@ -348,9 +398,9 @@ main (List<String> args) async{
     String toPrint = "";
     for (var genre in similaritys.keys){
       if (resultDetailed){
-        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre > ${similaritys[genre].toStringAsFixed(5)}\n" + toPrint;
+        toPrint = " ${(j+1).toString().padLeft(amount.toString().length)}. : $genre > ${similaritys[genre].toStringAsFixed(5)}\n" + toPrint;
       } else{
-        toPrint = " ${j.toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
+        toPrint = " ${(j+1).toString().padLeft(amount.toString().length)}. : $genre\n" + toPrint;
       }
       j++;
       if (j == (amount == null ? 9 : amount)){
@@ -398,9 +448,9 @@ main (List<String> args) async{
   tfIdfValues = NormalizeValues(tfIdfValues);
   for (var i = min((amount == null ? 98 : amount-1), tfIdfWords.length-1); i >= 0; i--){
     if (resultDetailed){
-      print("${i.toString().padLeft(amount.toString().length)}. : ${tfIdfWords[i]} > ${tfIdfValues[i].toStringAsFixed(8)} (${genreWords[tfIdfWords[i]]}, ${wordsContain[genreName][tfIdfWords[i]]}, ${totalContains[tfIdfWords[i]]})");
+      print("${(i+1).toString().padLeft(amount.toString().length)}. : ${tfIdfWords[i]} > ${tfIdfValues[i].toStringAsFixed(8)} (${genreWords[tfIdfWords[i]]}, ${wordsContain[genreName][tfIdfWords[i]]}, ${totalContains[tfIdfWords[i]]})");
     } else{
-      print("${i.toString().padLeft(amount.toString().length)}. ${tfIdfWords[i]}");
+      print("${(i+1).toString().padLeft(amount.toString().length)}. ${tfIdfWords[i]}");
     }
   }
 }
