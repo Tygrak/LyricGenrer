@@ -313,6 +313,69 @@ main (List<String> args) async{
       }
     }
     return;
+  } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "groups" || argsC[0].toLowerCase() == "genregroups")){
+    print("Genre groups:\n");
+    int perGenre = 1;
+    if (argsC.length > 1){
+      perGenre = int.parse(argsC[1]);
+      print("Top $perGenre for each genre added to group.");
+    }
+    Map<String, Map<String, double>> similaritys = new Map<String, Map<String, double>>();
+    Map<String, Map<String, double>> tfidfs = new Map<String, Map<String, double>>();
+    for (var genre in words.keys){
+      if (genre == "Total Songs" || genre == "Total Albums") continue;
+      tfidfs[genre] = CalculateGenreTFIDF(genre);
+    }
+    for (var genre1 in words.keys){
+      if (genre1 == "Total Songs" || genre1 == "Total Albums") continue;
+      Map<String, double> genre1tfidfs = tfidfs[genre1];
+      similaritys[genre1] = new Map<String, double>();
+      for (var genre2 in words.keys){
+        if (genre2 == genre1 || genre2 == "Total Songs" || genre2 == "Total Albums") continue;
+        Map<String, double> genre2tfidfs = tfidfs[genre2];
+        similaritys[genre1][genre2] = CosineSimilarity(genre1tfidfs, genre2tfidfs);
+        if (!similaritys[genre1][genre2].isFinite){
+          similaritys[genre1][genre2] = 0.0;
+        }
+      }
+      similaritys[genre1] = SortMapFromHighest(similaritys[genre1]);
+      //print("$genre1 : ${similaritys[genre1].keys.first}");
+    }
+    List<List<String>> groups = new List<List<String>>();
+    for (var genre1 in similaritys.keys){
+      int j = perGenre;
+      for (var genre2 in similaritys[genre1].keys){
+        bool flag = false;
+        for (var i = 0; i < groups.length; i++){
+          if (groups[i].contains(genre1) && !groups[i].contains(genre2)){
+            groups[i].add(genre2);
+            flag = true;
+            break;
+          } else if (groups[i].contains(genre2) && !groups[i].contains(genre1)){
+            groups[i].add(genre1);
+            flag = true;
+            break;
+          } else if (groups[i].contains(genre2) && groups[i].contains(genre1)){
+            flag = true;
+            break;
+          }
+        }
+        if (!flag){
+          List<String> newGroup = new List<String>();
+          newGroup.add(genre1);
+          newGroup.add(genre2);
+          groups.add(newGroup);
+        }
+        j--;
+        if (j == 0){
+          break;
+        }
+      }
+    }
+    for (var i = 0; i < groups.length; i++){
+      print(groups[i]);
+    }
+    return;
   } else if (argsC.length >= 1 && (argsC[0].toLowerCase() == "textimportant" || argsC[0].toLowerCase() == "texttfidf")){
     print("Text important:\n");
     if (argsC.length < 2){

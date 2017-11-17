@@ -24,8 +24,12 @@ A lyric scraping bot and data analyzer.
 | -columns (int) | Amount of columns per line for the commands genres and genresongs. |
 
 # Examples
-**dart analyzer.dart Death Metal** : Prints the most important words for Death Metal.
-**dart analyzer.dart genresongs -spaces 40 -columns 5** : Shows all genres split into 5 columns, divided by 40 spaces.
-**dart analyzer.dart genresongs Metal -minalbums 10** : Shows all genres containing the word metal with more than 10 albums.
-**dart analyzer.dart getsimilar Doom Metal -a 20** : Prints the 20 most similar genres to Doom Metal.
-**dart analyzer.dart text text.txt** : Prints the most similar genres to the text from the textfile text.txt.
+```dart analyzer.dart Death Metal``` : Prints the most important words for Death Metal.
+
+```dart analyzer.dart genresongs -spaces 40 -columns 5``` : Shows all genres split into 5 columns, divided by 40 spaces.
+
+```dart analyzer.dart genresongs Metal -minalbums 10``` : Shows all genres containing the word metal with more than 10 albums.
+
+```dart analyzer.dart getsimilar Doom Metal -a 20``` : Prints the 20 most similar genres to Doom Metal.
+
+```dart analyzer.dart text text.txt``` : Prints the most similar genres to the text from the textfile text.txt.
